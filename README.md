@@ -37,3 +37,13 @@ curl -X POST -F "file=@cat.jpg" http://127.0.0.1:8000/predict
 ```
 
 ## Project Structure
+├── main.py # FastAPI app
+├── requirements.txt
+└── cat_dog_model.keras # trained model
+
+
+## Limitations
+The model only knows two classes, so any other image will still be labeled cat or dog.
+
+## Author
+Kamatchinathan
