@@ -3,4 +3,5 @@ uvicorn
 python-multipart
 pillow
 numpy
-tensorflow-cpu==2.19.0
+tensorflow-cpu==2.20.0
+keras==3.13.2
