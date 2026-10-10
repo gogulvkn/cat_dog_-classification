@@ -3,4 +3,4 @@ uvicorn
 python-multipart
 pillow
 numpy
-tensorflow-cpu==<your Colab version>
+tensorflow-cpu==2.19.0
