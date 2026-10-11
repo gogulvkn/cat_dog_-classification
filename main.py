@@ -8,6 +8,9 @@ from PIL import Image
 app = FastAPI()
 model = tf.keras.models.load_model("cat_dog_model.keras")
 
+# Confidence threshold (80%)
+THRESHOLD = 0.80
+
 PAGE = """
 <html><body style="font-family:sans-serif;max-width:480px;margin:40px auto">
 <h2>Cat vs Dog Classifier</h2>
@@ -32,5 +35,18 @@ async def predict(file: UploadFile = File(...)):
     img = Image.open(io.BytesIO(await file.read())).convert("RGB").resize((128, 128))
     x = np.array(img, dtype="float32")[None, ...]   # raw 0-255; Rescaling is inside the model
     p = float(model.predict(x, verbose=0)[0][0])
-    return {"label": "dog" if p > 0.5 else "cat",
-            "confidence": p if p > 0.5 else 1 - p}
+    
+    # Calculate confidence for the predicted class
+    confidence = p if p > 0.5 else 1 - p
+    
+    # Check if the model is confident enough
+    if confidence < THRESHOLD:
+        return {
+            "label": "Unknown (Not a Cat or Dog)", 
+            "confidence": confidence
+        }
+    
+    return {
+        "label": "dog" if p > 0.5 else "cat",
+        "confidence": confidence
+    }
