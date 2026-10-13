@@ -22,9 +22,17 @@ from fastapi.responses import HTMLResponse
 from tensorflow import keras
 
 MODEL_PATH = os.getenv("MODEL_PATH", "models/cat_dog_model.keras")
-CONF_THRESHOLD = float(os.getenv("CONF_THRESHOLD", "0.80"))
+
+#CONF_THRESHOLD = float(os.getenv("CONF_THRESHOLD", "0.80"))
+
+CONF_THRESHOLD = float(os.getenv("CONF_THRESHOLD", "0.60"))
+
 USE_GATE = os.getenv("USE_IMAGENET_GATE", "1") == "1"
-GATE_THRESHOLD = float(os.getenv("GATE_THRESHOLD", "0.50"))
+
+#GATE_THRESHOLD = float(os.getenv("GATE_THRESHOLD", "0.50"))
+
+GATE_THRESHOLD = float(os.getenv("GATE_THRESHOLD", "0.30"))
+
 MAX_BYTES = int(os.getenv("MAX_UPLOAD_MB", "10")) * 1024 * 1024
 CLASS_NAMES_3 = os.getenv("CLASS_NAMES", "cat,dog,unknown").split(",")
 
