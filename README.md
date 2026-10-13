@@ -1,49 +1,45 @@
-# Cat vs Dog Image Classifier
+# Cat / Dog classifier – deployment
 
-A deep learning project that classifies images as **cat** or **dog** using a convolutional neural network (CNN) built with TensorFlow/Keras, served through a FastAPI web app.
-
-## Features
-- Binary image classification (cat / dog) with a confidence score
-- Data augmentation and dropout to reduce overfitting
-- Optional transfer learning with MobileNetV2
-- Simple web interface for uploading an image and getting a prediction
-- REST endpoint: `POST /predict`
-
-## Tech Stack
-Python, TensorFlow/Keras, FastAPI, Uvicorn, Pillow, NumPy, Render
-
-## Dataset
-[Cat vs Dog Image Classification](https://www.kaggle.com/datasets/vishallazrus/cat-vs-dog-image-classification-making-prediction) from Kaggle.
-
-## Model
-- Input: 128x128 RGB images
-- Layers: Conv2D + MaxPooling blocks, Flatten, Dense(128), Dropout, sigmoid output
-- Loss: binary cross-entropy, Optimizer: Adam
-- Validation accuracy: XX%  <!-- fill in from model.evaluate -->
-
-## Run Locally
-```bash
-git clone https://github.com/<your-username>/catdog-app.git
-cd catdog-app
-pip install -r requirements.txt
-uvicorn main:app --reload
 ```
-Open http://127.0.0.1:8000 and upload an image.
-
-## API
-```bash
-curl -X POST -F "file=@cat.jpg" http://127.0.0.1:8000/predict
-# {"label": "cat", "confidence": 0.98}
-```
-
-## Project Structure
-├── main.py # FastAPI app
+cat_dog_deploy/
+├── app/main.py            FastAPI service
+├── models/cat_dog_model.keras   <- put your trained model here
 ├── requirements.txt
-└── cat_dog_model.keras # trained model
+├── Dockerfile / docker-compose.yml
+└── test_client.py
+```
 
+## 1. Add the model
+Download `cat_dog_model.keras` from Colab and place it in `models/`.
 
-## Limitations
-The model only knows two classes, so any other image will still be labeled cat or dog.
+## 2. Run locally
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
 
-## Author
-Kamatchinathan
+## 3. Or Docker
+```bash
+docker compose up --build
+```
+
+## 4. Test
+```bash
+curl -F "file=@cat.jpg" http://localhost:8000/predict
+python test_client.py horse.jpg
+```
+Docs UI: http://localhost:8000/docs
+
+Response: `{"label": "cat|dog|unknown", "confidence": 0.98, "probabilities": {...}, "cat_dog_score": 0.97}`
+
+## Config (env vars)
+| Var | Default | Meaning |
+|---|---|---|
+| MODEL_PATH | models/cat_dog_model.keras | model file |
+| CONF_THRESHOLD | 0.80 | below this -> "unknown" |
+| USE_IMAGENET_GATE | 1 | pretrained check that the image is a cat/dog (fixes horse -> dog) |
+| GATE_THRESHOLD | 0.50 | min cat+dog ImageNet probability |
+| MAX_UPLOAD_MB | 10 | upload limit |
+
+Use the same TensorFlow/Keras major version you trained with in Colab (`!pip show tensorflow`) and pin it in `requirements.txt`.

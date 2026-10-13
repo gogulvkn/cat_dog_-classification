@@ -1,7 +1,5 @@
-fastapi
-uvicorn
-python-multipart
-pillow
+tensorflow-cpu>=2.16,<2.21
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
 numpy
-tensorflow-cpu==2.20.0
-keras==3.13.2

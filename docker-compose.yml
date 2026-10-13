@@ -1,0 +1,9 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      CONF_THRESHOLD: "0.80"
+      USE_IMAGENET_GATE: "1"
+    restart: unless-stopped
