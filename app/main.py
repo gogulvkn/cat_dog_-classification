@@ -7,7 +7,9 @@ Model facts (from the training notebook):
 
 The binary model can never say "unknown" on its own, so two guards are applied:
   1. ImageNet gate  - a pretrained MobileNetV2 checks the image is actually a cat/dog
-                      (fixes horse -> "dog"). Disable with USE_IMAGENET_GATE=0.
+                      (optional, OFF by default). The top-1 ImageNet class must be a
+                      cat/dog AND the summed cat/dog probability must pass the
+                      threshold. Enable with USE_IMAGENET_GATE=1.
   2. Confidence threshold on the classifier output.
 If you later retrain a 3-class softmax model (cat, dog, unknown), it is detected
 automatically from the output shape.
@@ -23,15 +25,9 @@ from tensorflow import keras
 
 MODEL_PATH = os.getenv("MODEL_PATH", "models/cat_dog_model.keras")
 
-#CONF_THRESHOLD = float(os.getenv("CONF_THRESHOLD", "0.80"))
-
-CONF_THRESHOLD = float(os.getenv("CONF_THRESHOLD", "0.60"))
-
-USE_GATE = os.getenv("USE_IMAGENET_GATE", "1") == "1"
-
-#GATE_THRESHOLD = float(os.getenv("GATE_THRESHOLD", "0.50"))
-
-GATE_THRESHOLD = float(os.getenv("GATE_THRESHOLD", "0.30"))
+CONF_THRESHOLD = float(os.getenv("CONF_THRESHOLD", "0.30"))
+USE_GATE = os.getenv("USE_IMAGENET_GATE", "0") == "1"  # off by default: 3-class model has its own unknown
+GATE_THRESHOLD = float(os.getenv("GATE_THRESHOLD", "0.50"))  # was 0.50
 
 MAX_BYTES = int(os.getenv("MAX_UPLOAD_MB", "10")) * 1024 * 1024
 CLASS_NAMES_3 = os.getenv("CLASS_NAMES", "cat,dog,unknown").split(",")
@@ -40,6 +36,7 @@ CLASS_NAMES_3 = os.getenv("CLASS_NAMES", "cat,dog,unknown").split(",")
 DOG_IDX = np.arange(151, 269)
 CAT_IDX = np.arange(281, 286)
 ANIMAL_IDX = np.concatenate([DOG_IDX, CAT_IDX])
+ANIMAL_SET = set(ANIMAL_IDX.tolist())
 
 state: dict = {}
 
@@ -92,11 +89,14 @@ def classify(img: np.ndarray) -> dict:
             "probabilities": {k: round(v, 4) for k, v in probs.items()}}
 
 
-def gate_score(img: np.ndarray) -> float:
+def gate_score(img: np.ndarray) -> tuple[float, bool]:
+    """Return (summed cat/dog probability, whether ImageNet top-1 is a cat/dog)."""
     x = resize(img, (224, 224))
     x = keras.applications.mobilenet_v2.preprocess_input(x)
     p = state["gate"].predict(x, verbose=0)[0]
-    return float(p[ANIMAL_IDX].sum())
+    score = float(p[ANIMAL_IDX].sum())
+    top1_is_pet = int(np.argmax(p)) in ANIMAL_SET
+    return score, top1_is_pet
 
 
 PAGE = """<!doctype html><html><head><meta charset="utf-8"><title>Cat / Dog Classifier</title>
@@ -122,7 +122,7 @@ async function go(){
   try{
     const r=await fetch('/predict',{method:'POST',body:fd});
     const j=await r.json();
-    o.textContent=r.ok?j.label.toUpperCase()+' ('+(j.confidence*100).toFixed(1)+'%)':(j.detail||'Error');
+    o.textContent=r.ok?j.label.toUpperCase()+(j.label==='unknown'?'':' ('+(j.confidence*100).toFixed(1)+'%)'):(j.detail||'Error');
   }catch(e){o.textContent='Request failed';}
 }
 </script></body></html>"""
@@ -149,8 +149,8 @@ def predict(file: UploadFile = File(...)):
     img = decode(data)
 
     if USE_GATE:
-        score = gate_score(img)
-        if score < GATE_THRESHOLD:
+        score, top1_is_pet = gate_score(img)
+        if score < GATE_THRESHOLD or not top1_is_pet:
             return {"label": "unknown", "confidence": round(1 - score, 4),
                     "reason": "not recognised as a cat or dog",
                     "cat_dog_score": round(score, 4)}
